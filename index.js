@@ -1,7 +1,24 @@
-const { Client, LocalAuth } = require("whatsapp-web.js");
+require("dotenv").config();
+const { Client, LocalAuth, MessageMedia } = require("whatsapp-web.js");
 const qrcode = require("qrcode-terminal");
 const axios = require("axios");
+const cloudinary = require("cloudinary").v2;
 const config = require("./config.js");
+
+// Configure Cloudinary
+cloudinary.config(config.CLOUDINARY);
+
+// Function to upload media to Cloudinary
+async function uploadToCloudinary(mediaBuffer) {
+  return new Promise((resolve, reject) => {
+    cloudinary.uploader
+      .upload_stream({ resource_type: "auto" }, (error, result) => {
+        if (error) reject(error);
+        else resolve(result.secure_url);
+      })
+      .end(mediaBuffer);
+  });
+}
 
 // Initialize WhatsApp client with LocalAuth
 const client = new Client({
@@ -55,9 +72,31 @@ client.on("message", async (message) => {
     // Format phone number (remove "whatsapp:" prefix and any @c.us suffix)
     const phone = message.from.replace("whatsapp:", "").replace("@c.us", "");
 
+    let evidence = "";
+
+    // Handle media if present
+    if (message.hasMedia) {
+      const media = await message.downloadMedia();
+
+      // Check if media is an image
+      if (media && media.mimetype.startsWith("image/")) {
+        try {
+          // Convert base64 to buffer
+          const mediaBuffer = Buffer.from(media.data, "base64");
+
+          // Upload to Cloudinary
+          evidence = await uploadToCloudinary(mediaBuffer);
+          console.log("Media uploaded to Cloudinary:", evidence);
+        } catch (uploadError) {
+          console.error("Error uploading to Cloudinary:", uploadError);
+          // Keep default evidence URL if upload fails
+        }
+      }
+    }
+
     // Prepare message data according to required structure
     const messageData = {
-      evidence: config.DEFAULT_EVIDENCE_URL,
+      evidence: evidence,
       description: description,
       pelapor: pelapor,
       phone: phone,
@@ -76,6 +115,9 @@ client.on("message", async (message) => {
 
     // Send message data to webhook
     const response = await axios.post(config.WEBHOOK_URL, messageData);
+
+    // Send thank you reply
+    await message.reply("Terimakasih laporan sudah diterima");
 
     console.log("Message forwarded successfully:", {
       status: response.status,
