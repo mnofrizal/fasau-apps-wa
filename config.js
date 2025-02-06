@@ -17,7 +17,7 @@ const config = {
   },
 
   // Default evidence URL
-  DEFAULT_EVIDENCE_URL: "http://fwf.fwf/image.jpg",
+  DEFAULT_EVIDENCE_URL: "",
 
   // WhatsApp client configuration
   CLIENT_OPTIONS: {
