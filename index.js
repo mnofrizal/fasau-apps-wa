@@ -45,15 +45,34 @@ client.on("ready", () => {
 
 // Handle incoming messages
 client.on("message", async (message) => {
-  // Check if message starts with any configured prefix
-  const prefix = Object.keys(config.MESSAGE_TYPES).find((p) =>
-    message.body.startsWith(`${p} `)
-  );
-  if (!prefix) {
-    return;
-  }
-
   try {
+    // Ignore messages older than 1 minute
+    const messageAge = Date.now() / 1000 - message.timestamp;
+    if (messageAge > 60) {
+      return;
+    }
+
+    // Check if message is from a group (by checking if the "from" contains "@g.us")
+    const isGroupMessage = message.from.endsWith("@g.us");
+    let groupInfo = null;
+
+    if (isGroupMessage) {
+      const chat = await message.getChat();
+      groupInfo = {
+        name: chat.name,
+        id: chat.id._serialized,
+      };
+      console.log(`Checking message from group: ${chat.name}`);
+    }
+
+    // Check if message starts with any configured prefix (for both direct and group messages)
+    const prefix = Object.keys(config.MESSAGE_TYPES).find((p) =>
+      message.body.startsWith(`${p} `)
+    );
+    if (!prefix) {
+      return;
+    }
+
     // Get the category based on the prefix
     const category = config.MESSAGE_TYPES[prefix];
 
@@ -63,14 +82,21 @@ client.on("message", async (message) => {
     // Get contact info for the sender
     const contact = await message.getContact();
 
-    // Try to get the name in this order:
-    // 1. Contact name (if in contacts)
-    // 2. Push name (display name set by user)
-    // 3. "Unknown User" as last resort
-    const pelapor = contact.name || contact.pushname || "Unknown User";
+    // Use only push name (display name set by user) or "Unknown User" as fallback
+    const pelapor = contact.pushname || "Unknown User";
 
-    // Format phone number (remove "whatsapp:" prefix and any @c.us suffix)
-    const phone = message.from.replace("whatsapp:", "").replace("@c.us", "");
+    // Format phone number
+    // For group messages, use participant's number, otherwise use sender's number
+    const phone = (isGroupMessage ? message.id.participant : message.from)
+      .replace("whatsapp:", "")
+      .replace("@c.us", "");
+
+    // Log raw message details for debugging
+    console.log("\n=== Raw Message Details ===");
+    console.log("From:", message.from);
+    console.log("Participant:", message.id.participant);
+    console.log("Is Group:", isGroupMessage);
+    console.log("========================\n");
 
     let evidence = "";
 
@@ -106,9 +132,13 @@ client.on("message", async (message) => {
     // Log the message data before sending
     console.log("\n=== Message Data to be Sent ===");
     console.log("Contact Details:");
-    console.log("- Contact Name:", contact.name || "Not in contacts");
     console.log("- Push Name:", contact.pushname || "No push name");
     console.log("- Final Name Used:", pelapor);
+    console.log("- Phone Number:", phone);
+    console.log(
+      "- Message Type:",
+      isGroupMessage ? "Group Message" : "Direct Message"
+    );
     console.log("\nPayload:");
     console.log(JSON.stringify(messageData, null, 2));
     console.log("==============================\n");
@@ -116,22 +146,46 @@ client.on("message", async (message) => {
     // Send message data to webhook
     const response = await axios.post(config.WEBHOOK_URL, messageData);
 
-    // Send thank you reply
-    await message.reply("Terimakasih laporan sudah diterima");
+    // Send random thank you reply with user's name
+    const responses = config.RESPONSE_MESSAGES;
+    const randomResponse =
+      responses[Math.floor(Math.random() * responses.length)];
+    const personalizedResponse = randomResponse.replace("{name}", pelapor);
+    await message.reply(personalizedResponse);
 
-    console.log("Message forwarded successfully:", {
+    // Log success with group info if applicable
+    const successInfo = {
       status: response.status,
       messageId: message.id,
       category: category,
       pelapor: pelapor,
       description: description,
-    });
+      source: isGroupMessage ? "group" : "direct",
+    };
+
+    if (groupInfo) {
+      successInfo.group = groupInfo;
+    }
+
+    console.log("Message forwarded successfully:", successInfo);
   } catch (error) {
-    console.error("Error forwarding message:", {
+    const errorInfo = {
       error: error.message,
       messageId: message.id,
       body: message.body,
-    });
+    };
+
+    if (isGroupMessage) {
+      try {
+        const chat = await message.getChat();
+        errorInfo.groupName = chat.name;
+        errorInfo.isGroup = true;
+      } catch (chatError) {
+        errorInfo.groupError = "Failed to get group info";
+      }
+    }
+
+    console.error("Error forwarding message:", errorInfo);
   }
 });
 
