@@ -1,12 +1,37 @@
 require("dotenv").config();
-const { Client, LocalAuth, MessageMedia } = require("whatsapp-web.js");
-const qrcode = require("qrcode-terminal");
+const express = require("express");
 const axios = require("axios");
 const cloudinary = require("cloudinary").v2;
 const config = require("./config.js");
+const messageRoutes = require("./src/routes/message.routes");
+const cors = require("cors");
+
+// Initialize Express
+const app = express();
+const PORT = process.env.PORT || 3000;
 
 // Configure Cloudinary
 cloudinary.config(config.CLOUDINARY);
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// API Routes
+app.use("/api", messageRoutes);
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error("Global error:", err);
+  res.status(500).json({
+    success: false,
+    error: "Internal server error",
+  });
+});
+
+// Initialize WhatsApp service
+const whatsappService = require("./src/services/whatsapp.service");
 
 // Function to upload media to Cloudinary
 async function uploadToCloudinary(mediaBuffer) {
@@ -20,31 +45,13 @@ async function uploadToCloudinary(mediaBuffer) {
   });
 }
 
-// Initialize WhatsApp client with LocalAuth
-const client = new Client({
-  authStrategy: new LocalAuth(),
-  puppeteer: config.CLIENT_OPTIONS.puppeteer,
-});
-
-// Generate QR Code for authentication (only needed for first time)
-client.on("qr", (qr) => {
-  console.log("QR Code received. Scan it with WhatsApp:");
-  qrcode.generate(qr, { small: true });
-});
-
-// Handle successful authentication
-client.on("ready", () => {
-  console.log("WhatsApp client is ready!");
-  console.log("Session has been saved locally.");
-  console.log("Monitoring messages with these prefixes:");
-  Object.entries(config.MESSAGE_TYPES).forEach(([prefix, category]) => {
-    console.log(`${prefix} -> ${category}`);
-  });
-  console.log("Messages will be forwarded to:", config.WEBHOOK_URL);
+// Start server
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });
 
 // Handle incoming messages
-client.on("message", async (message) => {
+whatsappService.client.on("message", async (message) => {
   try {
     // Ignore messages older than 1 minute
     const messageAge = Date.now() / 1000 - message.timestamp;
@@ -146,8 +153,15 @@ client.on("message", async (message) => {
     // Send message data to webhook
     const response = await axios.post(config.WEBHOOK_URL, messageData);
 
-    // Send random thank you reply with user's name
-    const responses = config.RESPONSE_MESSAGES;
+    // Send random thank you reply with user's name based on message type
+    let responses;
+    if (category === "CM") {
+      responses = config.RESPONSE_MESSAGES_CM;
+    } else if (category === "PM") {
+      responses = config.RESPONSE_MESSAGES_PM;
+    } else {
+      responses = config.RESPONSE_MESSAGES_CM; // Default to CM responses
+    }
     const randomResponse =
       responses[Math.floor(Math.random() * responses.length)];
     const personalizedResponse = randomResponse.replace("{name}", pelapor);
@@ -186,33 +200,5 @@ client.on("message", async (message) => {
     }
 
     console.error("Error forwarding message:", errorInfo);
-  }
-});
-
-// Handle authentication failures
-client.on("auth_failure", (msg) => {
-  console.error("Authentication failed:", msg);
-});
-
-// Handle disconnections
-client.on("disconnected", (reason) => {
-  console.log("Client was disconnected:", reason);
-});
-
-// Initialize client
-client.initialize().catch((error) => {
-  console.error("Failed to initialize client:", error);
-});
-
-// Handle process termination
-process.on("SIGINT", async () => {
-  console.log("Shutting down...");
-  try {
-    await client.destroy();
-    console.log("Client destroyed successfully");
-    process.exit(0);
-  } catch (error) {
-    console.error("Error while shutting down:", error);
-    process.exit(1);
   }
 });

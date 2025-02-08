@@ -1,0 +1,136 @@
+### Variables
+@baseUrl = http://localhost:3920/api
+
+### Get All WhatsApp Groups
+GET {{baseUrl}}/groups
+Content-Type: application/json
+
+### Check WhatsApp Client Status
+GET {{baseUrl}}/status
+Content-Type: application/json
+
+### Send a WhatsApp Message
+POST {{baseUrl}}/messages
+Content-Type: application/json
+
+{
+    "phoneNumber": "1234567890",
+    "message": "Hello, this is a test message!"
+}
+
+### Send a WhatsApp Message with International Number
+POST {{baseUrl}}/messages
+Content-Type: application/json
+
+{
+    "phoneNumber": "+62812345678",
+    "message": "Hello from Indonesia!"
+}
+
+### Send a WhatsApp Message - Error Case (Missing Phone)
+POST {{baseUrl}}/messages
+Content-Type: application/json
+
+{
+    "message": "This should fail - no phone number"
+}
+
+### Send a WhatsApp Message - Error Case (Missing Message)
+POST {{baseUrl}}/messages
+Content-Type: application/json
+
+{
+    "phoneNumber": "1234567890"
+}
+
+### Send Message to WhatsApp Group
+POST {{baseUrl}}/messages/group
+Content-Type: application/json
+
+{
+    "groupId": "120363263869910065@g.us",
+    "message": "Hello everyone! This is a test group message."
+}
+
+### Send Message to Group - Error Case (Missing Group ID)
+POST {{baseUrl}}/messages/group
+Content-Type: application/json
+
+{
+    "message": "This should fail - no group ID"
+}
+
+### Send Message to Group - Error Case (Missing Message)
+POST {{baseUrl}}/messages/group
+Content-Type: application/json
+
+{
+    "groupId": "120363263869910065@g.us"
+}
+
+### Send Task to Group Using Template
+POST {{baseUrl}}/messages/template
+Content-Type: application/json
+
+{
+    "templateName": "fasauSendTaskToGrup",
+    "groupId": "120363263869910065@g.us",
+    "data": {
+        "title": "Update Website Content",
+        "keterangan": "Perbarui konten halaman About Us dengan informasi terbaru",
+        "pic": "@john_doe",
+        "dueDate": "10 Feb 2024",
+        "count":3
+    }
+}
+
+### Send Task to Group - Error Case (Missing Data)
+POST {{baseUrl}}/messages/template
+Content-Type: application/json
+
+{
+    "templateName": "fasauSendTaskToGrup",
+    "groupId": "123456789@g.us"
+}
+
+### Edit a WhatsApp Message
+PUT {{baseUrl}}/messages/true_120363263869910065@g.us_3EB04AEC8B5E90A0E404D8_6285158226609@c.us
+Content-Type: application/json
+
+{
+    "newText": "This is the edited message text"
+}
+
+### Edit Message - Error Case (Missing New Text)
+PUT {{baseUrl}}/messages/YOUR_MESSAGE_ID
+Content-Type: application/json
+
+{
+}
+
+### Delete a WhatsApp Message
+DELETE {{baseUrl}}/messages/YOUR_MESSAGE_ID
+Content-Type: application/json
+
+### Edit a WhatsApp Message Using Template
+PUT {{baseUrl}}/messages/true_120363263869910065@g.us_3EB0BFE098CCB3B7D27333_6285158226609@c.us/template
+Content-Type: application/json
+
+{
+    "templateName": "fasauSendTaskToGrup",
+    "data": {
+        "title": "Updated Task: Website Revision",
+        "keterangan": "Please revise the homepage design",
+        "pic": "@jane_doe",
+        "dueDate": "15 Feb 2024",
+        "count": 2
+    }
+}
+
+### Edit Message with Template - Error Case (Missing Data)
+PUT {{baseUrl}}/messages/YOUR_MESSAGE_ID/template
+Content-Type: application/json
+
+{
+    "templateName": "fasauSendTaskToGrup"
+}
