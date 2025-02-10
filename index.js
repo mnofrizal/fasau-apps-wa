@@ -74,7 +74,7 @@ whatsappService.client.on("message", async (message) => {
 
     // Check if message starts with any configured prefix (for both direct and group messages)
     const prefix = Object.keys(config.MESSAGE_TYPES).find((p) =>
-      message.body.startsWith(`${p} `)
+      message.body.toLowerCase().startsWith(`${p} `)
     );
     if (!prefix) {
       return;
