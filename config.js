@@ -1,7 +1,7 @@
 // Load environment variables for Cloudinary
 const config = {
   // Webhook configuration
-  WEBHOOK_URL: process.env.WEBHOOK_URL || "http://localhost:3900/api/v1/report",
+  WEBHOOK_URL: process.env.WEBHOOK_URL,
 
   // Cloudinary configuration
   CLOUDINARY: {
