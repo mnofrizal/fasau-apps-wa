@@ -10,17 +10,19 @@ const config = {
     api_secret: process.env.CLOUDINARY_API_SECRET,
   },
 
-  // Message prefixes and their categories
+  // Message prefixes and their categories/subcategories
   MESSAGE_TYPES: {
-    ".l1": "CM",
-    ".l2": "PM",
-    ".l3": "AC",
-    ".l4": "MK",
-    ".l5": "TIJ",
-    ".l6": "TDP",
-    ".l7": "JSI",
-    ".l8": "PMT",
-    ".l9": "PST",
+    ".l1": { category: "CM", subCategory: "LAPORAN" },
+    ".l2": { category: "PM", subCategory: "LAPORAN" },
+    ".t1": { category: "CM", subCategory: "TEMUAN" },
+    ".t2": { category: "PM", subCategory: "TEMUAN" },
+    // ".l3": "AC",
+    // ".l4": "MK",
+    // ".l5": "TIJ",
+    // ".l6": "TDP",
+    // ".l7": "JSI",
+    // ".l8": "PMT",
+    // ".l9": "PST",
   },
 
   // Default evidence URL

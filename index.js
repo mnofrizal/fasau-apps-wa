@@ -80,8 +80,8 @@ whatsappService.client.on("message", async (message) => {
       return;
     }
 
-    // Get the category based on the prefix
-    const category = config.MESSAGE_TYPES[prefix];
+    // Get the category and subcategory based on the prefix
+    const { category, subCategory } = config.MESSAGE_TYPES[prefix];
 
     // Remove the prefix and trim
     const description = message.body.substring(prefix.length + 1).trim();
@@ -134,6 +134,7 @@ whatsappService.client.on("message", async (message) => {
       pelapor: pelapor,
       phone: phone,
       category: category,
+      subCategory: subCategory,
     };
 
     // Log the message data before sending
@@ -172,6 +173,7 @@ whatsappService.client.on("message", async (message) => {
       status: response.status,
       messageId: message.id,
       category: category,
+      subCategory: subCategory,
       pelapor: pelapor,
       description: description,
       source: isGroupMessage ? "group" : "direct",

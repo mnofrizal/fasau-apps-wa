@@ -75,9 +75,13 @@ class WhatsAppService {
         config.CLIENT_OPTIONS.dataPath
       );
       console.log("Monitoring messages with these prefixes:");
-      Object.entries(config.MESSAGE_TYPES).forEach(([prefix, category]) => {
-        console.log(`${prefix} -> ${category}`);
-      });
+      Object.entries(config.MESSAGE_TYPES).forEach(
+        ([prefix, { category, subCategory }]) => {
+          console.log(
+            `${prefix} -> Category: ${category}, SubCategory: ${subCategory}`
+          );
+        }
+      );
     });
 
     // Handle authentication failures
