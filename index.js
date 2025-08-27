@@ -52,15 +52,24 @@ app.listen(PORT, () => {
 
 // Handle incoming messages
 whatsappService.client.on("message", async (message) => {
+  // Check if message is from a group (by checking if the "from" contains "@g.us")
+  let isGroupMessage = false;
+
   try {
+    // Add safety checks for message object
+    if (!message || !message.from || !message.timestamp) {
+      console.log("Invalid message object received:", message);
+      return;
+    }
+
     // Ignore messages older than 1 minute
     const messageAge = Date.now() / 1000 - message.timestamp;
     if (messageAge > 60) {
       return;
     }
 
-    // Check if message is from a group (by checking if the "from" contains "@g.us")
-    const isGroupMessage = message.from.endsWith("@g.us");
+    // Set group message flag
+    isGroupMessage = message.from.endsWith("@g.us");
     let groupInfo = null;
 
     if (isGroupMessage) {
@@ -92,17 +101,30 @@ whatsappService.client.on("message", async (message) => {
     // Use only push name (display name set by user) or "Unknown User" as fallback
     const pelapor = contact.pushname || "Unknown User";
 
-    // Format phone number
+    // Format phone number with safety checks
     // For group messages, use participant's number, otherwise use sender's number
-    const phone = (isGroupMessage ? message.id.participant : message.from)
-      .replace("whatsapp:", "")
-      .replace("@c.us", "");
+    let phone;
+    try {
+      if (isGroupMessage && message.id && message.id.participant) {
+        phone = message.id.participant
+          .replace("whatsapp:", "")
+          .replace("@c.us", "");
+      } else {
+        phone = message.from.replace("whatsapp:", "").replace("@c.us", "");
+      }
+    } catch (phoneError) {
+      console.error("Error extracting phone number:", phoneError);
+      phone = "unknown";
+    }
 
     // Log raw message details for debugging
     console.log("\n=== Raw Message Details ===");
     console.log("From:", message.from);
-    console.log("Participant:", message.id.participant);
+    console.log("Message ID:", message.id);
+    console.log("Participant:", message.id ? message.id.participant : "N/A");
     console.log("Is Group:", isGroupMessage);
+    console.log("Message Type:", typeof message);
+    console.log("Message Keys:", Object.keys(message));
     console.log("========================\n");
 
     let evidence = "";
@@ -187,8 +209,11 @@ whatsappService.client.on("message", async (message) => {
   } catch (error) {
     const errorInfo = {
       error: error.message,
-      messageId: message.id,
-      body: message.body,
+      stack: error.stack,
+      messageId: message && message.id ? message.id : "unknown",
+      body: message && message.body ? message.body : "unknown",
+      messageType: typeof message,
+      messageKeys: message ? Object.keys(message) : [],
     };
 
     if (isGroupMessage) {
@@ -198,6 +223,7 @@ whatsappService.client.on("message", async (message) => {
         errorInfo.isGroup = true;
       } catch (chatError) {
         errorInfo.groupError = "Failed to get group info";
+        errorInfo.chatErrorMessage = chatError.message;
       }
     }
 
