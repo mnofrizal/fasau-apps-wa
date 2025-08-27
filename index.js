@@ -108,7 +108,8 @@ whatsappService.client.on("message", async (message) => {
       if (isGroupMessage && message.id && message.id.participant) {
         phone = message.id.participant
           .replace("whatsapp:", "")
-          .replace("@c.us", "");
+          .replace("@c.us", "")
+          .replace("@lid", ""); // Remove @lid suffix for group participants
       } else {
         phone = message.from.replace("whatsapp:", "").replace("@c.us", "");
       }
